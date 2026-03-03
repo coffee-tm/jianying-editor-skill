@@ -38,7 +38,14 @@ This is the **preferred** way to use BGM to ensure copyright compliance and qual
 4.  **使用**：AI 现在可以通过 `identifier`（通常是歌名或 ID）在本地 `jy_cached_audio.csv` 中找到物理路径并添加。
 
 ### 🤖 AI 指引策略:
-- 如果用户说“我想要某某风格的音乐”，AI 应回复：“请在剪映中搜索该风格并**播放一次**，然后告诉我‘同步音乐’，我就可以为你自动添加了。”
+- **优先检索**：AI 应同时检索 `data/jy_cached_audio.csv` (本地资产) 和 `data/cloud_music_library.csv` (云端索引)。
+- **引导逻辑**：
+    1.  **命中云端索引 (`cloud_music_library.csv`)**：AI 应回复：“我在云端库中发现了这首歌！我会为你生成草稿，生成完毕之后你需要进入草稿中点击一次同步。”
+    2.  **完全未命中**：AI 应回复：“我没找到这种风格。请在剪映里找到喜欢的音乐并**添加到任意草稿轨道**，然后告诉我‘扫描音乐’，我会将其录入库中供以后直接调用。”
+
+## 3. 音乐库文件说明 (Data Context)
+- `data/jy_cached_audio.csv`: **核心资产**。包含已同步到 Skill 目录的物理文件路径。
+- `data/cloud_music_library.csv`: **增强索引**。包含从历史工程中扫描到的 `music_id` 和分类。用于在用户通过关键词搜索时提供候选建议。
 
 ## 3. Web Sourcing (Fallback)
 If native assets are missing after sync, source royalty-free music from the web.

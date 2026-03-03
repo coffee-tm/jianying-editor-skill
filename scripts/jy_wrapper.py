@@ -210,6 +210,26 @@ class MockVideoMaterial(draft.VideoMaterial):
             "local_material_id": ""
         }
 
+class MockAudioMaterial(draft.AudioMaterial):
+    """绕过底层库物理文件检测的伪音频素材类"""
+    def __init__(self, material_id, duration, name, path):
+        self.material_id = material_id
+        self.duration = duration
+        self.name = name
+        self.path = path
+        self.material_type = "audio"
+        self.local_material_id = ""
+
+    def export_json(self):
+        return {
+            "id": self.material_id,
+            "type": "music",
+            "name": self.name,
+            "path": self.path,
+            "duration": self.duration,
+            "local_material_id": ""
+        }
+
 class CompoundSegment(draft.VideoSegment):
     """自定义复合片段 Segment，完全解耦 MediaInfo 检测"""
     def __init__(self, mock_material, draft_id, duration, start_us=0):
@@ -317,7 +337,9 @@ class JyProject:
         
         self.df = draft.DraftFolder(self.root)
         self.name = project_name
+        self.draft_dir = os.path.join(self.root, self.name)
         self._internal_colors = [] # 新增：用于追踪内部生成的色块
+        self._cloud_music_patches = {} # 新增：用于追踪云端音乐映射 {dummy_path: music_id}
         
         # 是否显式指定了分辨率 (如果用户传入的不是默认值，则视为显式指定)
         self._explicit_res = (width != 1920 or height != 1080)
@@ -590,6 +612,8 @@ class JyProject:
         draft_path = os.path.join(self.root, self.name)
         try:
             self.script.save()
+            # 自动针对云端库进行协议补丁
+            self._patch_cloud_music_ids()
             # 自动注入激活补丁，解决亮度/曝光等参数不即时生效的问题
             self._force_activate_adjustments()
             save_status = "SUCCESS"
@@ -713,6 +737,41 @@ class JyProject:
 
         except Exception as e:
             print(f"⚠️  Force activation failed: {e}")
+
+    def _patch_cloud_music_ids(self):
+        """
+        [协议级补丁]: 扫描 JSON 并强行注入 music_id。
+        因为本地库不原生支持添加不存在的云端音乐。
+        """
+        import json
+        if not self._cloud_music_patches: return
+
+        content_path = os.path.join(self.root, self.name, "draft_content.json")
+        if not os.path.exists(content_path): return
+
+        try:
+            with open(content_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            has_modified = False
+            audios = data.get("materials", {}).get("audios", [])
+            for mat in audios:
+                path = mat.get("path", "")
+                for dummy_path, music_id in self._cloud_music_patches.items():
+                    if dummy_path in path:
+                        mat["music_id"] = music_id
+                        mat["type"] = "music" # 必须标记为 music 类型，剪映才会尝试同步
+                        # 注入其他必要的占位符以欺骗剪映
+                        mat.setdefault("category_name", "推荐音乐")
+                        mat.setdefault("category_id", "6678556627852856076")
+                        has_modified = True
+            
+            if has_modified:
+                with open(content_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False)
+                print(f"📡 Cloud Music Patched: Injected IDs for project '{self.name}'.")
+        except Exception as e:
+            print(f"⚠️ Cloud patching failed: {e}")
 
     def _update_root_meta_info(self, draft_path: str, duration_us: int = 0):
         """
@@ -962,6 +1021,38 @@ class JyProject:
             mat,
             target_timerange=trange(start_us, actual_duration),
             source_timerange=trange(0, actual_duration)
+        )
+        self.script.add_segment(seg, track_name)
+        return seg
+
+    def add_cloud_music(self, music_id: str, name: str, duration_s: float, start_time: Union[str, int] = None, track_name: str = "BGM"):
+        """
+        [封装核心]: 添加一个未下载的云端音乐引用。
+        生成后用户需在剪映内点击该占位素材进行同步/下载。
+        """
+        if start_time is None:
+            start_time = self.get_track_duration(track_name)
+        self._ensure_track(draft.TrackType.audio, track_name)
+        
+        start_us = tim(start_time)
+        duration_us = int(float(duration_s) * 1000000)
+        
+        # 记录补丁信息。
+        dummy_path = f"CLOUD_PLACEHOLDER_{music_id}.mp3"
+        self._cloud_music_patches[dummy_path] = music_id
+
+        # 使用 MockAudioMaterial 绕过文件系统检测
+        mat = MockAudioMaterial(
+            material_id=str(uuid.uuid4()).upper(),
+            duration=duration_us,
+            name=name,
+            path=os.path.join(self.draft_dir, dummy_path).replace("\\", "/")
+        )
+        
+        seg = draft.AudioSegment(
+            mat,
+            target_timerange=trange(start_us, duration_us),
+            source_timerange=trange(0, duration_us)
         )
         self.script.add_segment(seg, track_name)
         return seg
