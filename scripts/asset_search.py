@@ -1,13 +1,12 @@
 import argparse
 import csv
-import json
 import os
-import sys
 from typing import Dict, List
 
+from utils.cli_protocol import emit_result, make_result
 from utils.constants import SYNONYMS
+from utils.errors import InfraError
 from utils.logging_utils import setup_logger
-
 
 logger = setup_logger("asset_search")
 
@@ -54,8 +53,7 @@ def search_assets(query: str, category: str = None, limit: int = 20) -> List[Dic
     search_terms = expand_query_with_synonyms(query)
 
     if not os.path.exists(DATA_DIR):
-        logger.error("Data directory not found: %s", DATA_DIR)
-        return []
+        raise InfraError(f"Data directory not found: {DATA_DIR}")
 
     files_to_search: List[str]
     if category:
@@ -158,12 +156,30 @@ def main() -> int:
         return 0
 
     logger.info("Searching '%s'...", args.query)
-    search_results = search_assets(args.query, args.category, args.limit)
-    if args.json:
-        print(json.dumps(search_results, ensure_ascii=False))
-    else:
-        print(format_results(search_results))
-    return 0
+    try:
+        search_results = search_assets(args.query, args.category, args.limit)
+        if args.json:
+            emit_result(
+                make_result(
+                    True,
+                    "ok",
+                    "",
+                    {
+                        "query": args.query,
+                        "category": args.category,
+                        "count": len(search_results),
+                        "results": search_results,
+                    },
+                ),
+                True,
+            )
+        else:
+            print(format_results(search_results))
+        return 0
+    except InfraError as e:
+        logger.error(str(e))
+        emit_result(make_result(False, "infra_error", str(e)), args.json)
+        return 1
 
 
 if __name__ == "__main__":

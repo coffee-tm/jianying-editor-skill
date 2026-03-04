@@ -58,8 +58,13 @@ def safe_tim(inp: Union[str, int, float]) -> int:
     2. 00:00:10 (冒号分隔格式)
     3. 10 (纯数字秒)
     """
-    if isinstance(inp, (int, float)):
-        return int(inp * 1000000) if inp < 1000000 else int(inp)
+    # 约定：
+    # - int 统一视为“微秒”，避免 200000us 被误判为 200000s
+    # - float 视为“秒”
+    if isinstance(inp, int):
+        return int(inp)
+    if isinstance(inp, float):
+        return int(inp * 1000000)
 
     if isinstance(inp, str) and ":" in inp:
         try:
@@ -72,6 +77,11 @@ def safe_tim(inp: Union[str, int, float]) -> int:
                 return int((m * 60 + s) * 1000000)
         except Exception:
             pass
+    if isinstance(inp, str):
+        s = inp.strip()
+        # 纯数字字符串按秒处理
+        if s.replace(".", "", 1).isdigit():
+            return int(float(s) * 1000000)
     return tim(inp)
 
 def format_srt_time(us: int) -> str:

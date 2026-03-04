@@ -4,13 +4,15 @@ import json
 import os
 from typing import Dict
 
+from utils.cli_protocol import emit_result, make_result
+from utils.config import CONFIG
+from utils.errors import InfraError
 from utils.logging_utils import setup_logger
-
 
 logger = setup_logger("build_cloud_music_library")
 
 LOCAL_APP_DATA = os.getenv("LOCALAPPDATA")
-PROJECTS_ROOT = (
+PROJECTS_ROOT = CONFIG.projects_root_override or (
     os.path.join(LOCAL_APP_DATA, r"JianyingPro\User Data\Projects\com.lveditor.draft")
     if LOCAL_APP_DATA
     else ""
@@ -27,7 +29,7 @@ def load_existing_csv(path: str, id_key: str) -> Dict[str, dict]:
         return library
     try:
         with open(path, "r", encoding="utf-8", newline="") as f:
-            lines = [l for l in f if not l.startswith("#")]
+            lines = [line for line in f if not line.startswith("#")]
         if not lines:
             return library
         reader = csv.DictReader(lines)
@@ -78,8 +80,11 @@ def build_libraries(
     logger.info("Scanning Jianying projects for cloud assets...")
 
     if not projects_root or not os.path.exists(projects_root):
-        logger.error("Projects root not found: %s", projects_root or "<LOCALAPPDATA missing>")
-        return 1, {"ok": False, "reason": "projects_root_missing", "projects_root": projects_root}
+        err = InfraError(f"Projects root not found: {projects_root or '<LOCALAPPDATA missing>'}")
+        logger.error(str(err))
+        return 1, make_result(
+            False, "projects_root_missing", str(err), {"projects_root": projects_root}
+        )
 
     music_lib = load_existing_csv(music_csv, "music_id")
     sfx_lib = load_existing_csv(sfx_csv, "effect_id")
@@ -137,21 +142,27 @@ def build_libraries(
         save_to_csv(music_csv, music_lib, "music_id", "Music")
         save_to_csv(sfx_csv, sfx_lib, "effect_id", "Sound Effects")
     logger.info("Success. Music=%d, SFX=%d", len(music_lib), len(sfx_lib))
-    return 0, {
-        "ok": True,
-        "projects_root": projects_root,
-        "music_count": len(music_lib),
-        "sfx_count": len(sfx_lib),
-        "skipped_projects": skipped_projects,
-        "dry_run": dry_run,
-        "music_csv": music_csv,
-        "sfx_csv": sfx_csv,
-    }
+    return 0, make_result(
+        True,
+        "ok",
+        "",
+        {
+            "projects_root": projects_root,
+            "music_count": len(music_lib),
+            "sfx_count": len(sfx_lib),
+            "skipped_projects": skipped_projects,
+            "dry_run": dry_run,
+            "music_csv": music_csv,
+            "sfx_csv": sfx_csv,
+        },
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build cloud music/sfx library from local drafts")
-    parser.add_argument("--projects-root", default=PROJECTS_ROOT, help="JianYing draft projects root")
+    parser.add_argument(
+        "--projects-root", default=PROJECTS_ROOT, help="JianYing draft projects root"
+    )
     parser.add_argument("--music-csv", default=MUSIC_CSV, help="Output music csv path")
     parser.add_argument("--sfx-csv", default=SFX_CSV, help="Output sound effects csv path")
     parser.add_argument("--dry-run", action="store_true", help="Scan only, do not write csv")
@@ -164,6 +175,5 @@ if __name__ == "__main__":
         sfx_csv=args.sfx_csv,
         dry_run=args.dry_run,
     )
-    if args.json:
-        print(json.dumps(summary, ensure_ascii=False))
+    emit_result(summary, args.json)
     raise SystemExit(exit_code)

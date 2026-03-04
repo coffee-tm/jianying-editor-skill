@@ -1,7 +1,4 @@
 import subprocess
-import sys
-from pathlib import Path
-
 
 BAD_PATTERNS = (
     "__pycache__/",

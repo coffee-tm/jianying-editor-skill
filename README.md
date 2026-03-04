@@ -61,11 +61,11 @@ git clone https://github.com/luoluoluo22/jianying-editor-skill.git skills/jianyi
 **🟡 进阶：精准搜索与特效应用**
 > "帮我把 `assets/` 里的视频导入剪映，配上背景音乐，最后加一个带打字机动画的标题‘我的第一支 Vlog’。"
 
-**� 联动：原生曲库同步**
+**🟣 联动：原生曲库同步**
 > **User**: "我想用剪映自带的那首‘科技感’BGM。"
 > **AI**: "没问题。请先在剪映里播放一次该音乐（建立本地缓存），然后让我运行同步工具，我就能直接调用它了。"
 
-**�🟠 专业：软件教程录制 (录屏 + 智能缩放)**
+**🟠 专业：软件教程录制 (录屏 + 智能缩放)**
 > "我想录一段代码运行教程。请帮我启动录屏工具。"
 
 **🔴 骨灰：影视解说全自动流水线（需安装antigravity-api-skill）**
@@ -96,6 +96,28 @@ pip install -r requirements.txt
 # 初始化网页捕获环境 (Web-to-Video 功能必填)
 playwright install chromium
 ```
+
+### 1.1 工程质量检查 (可选但推荐)
+```bash
+python -m unittest -v
+python tools/check_repo_hygiene.py
+python tools/validate_data_schema.py
+```
+
+### 1.2 统一 CLI 机器输出
+核心脚本已支持 `--json`，适合 Agent/MCP 集成：
+```bash
+python scripts/api_validator.py --json
+python scripts/asset_search.py "复古" --json
+python scripts/build_cloud_music_library.py --dry-run --json
+python scripts/auto_exporter.py "DraftName" "out.mp4" --json
+```
+
+### 1.3 运行时环境变量
+- `JY_LOG_LEVEL`：日志级别（默认 `INFO`）
+- `JY_CLOUD_MAX_MB`：云素材下载体积上限（默认 `512`）
+- `JY_TTS_INSECURE_SSL`：设为 `1` 时允许禁用 TLS 校验（仅排障）
+- `JY_PROJECTS_ROOT`：覆盖本地剪映草稿根目录
 
 ### 2. 确认剪映安装位置
 Skill 默认认为您的剪映安装在 C 盘默认位置：
@@ -131,6 +153,8 @@ git pull
 ```
 
 ## 📅 更新日志 (Changelog)
+
+最新版本请直接查看 [CHANGELOG.md](CHANGELOG.md) 与 [VERSION](VERSION)。
 
 ### v1.4 (2026-02-09) - 全自动 AI 导演系统上线！
 - **🧠 AI 语义素材匹配 (Semantic Footage Match)**:

@@ -1,10 +1,10 @@
 import argparse
-import json
 import os
 
+from utils.cli_protocol import emit_result, make_result
 from utils.env_setup import setup_env
+from utils.errors import UserInputError
 from utils.logging_utils import setup_logger
-
 
 setup_env()
 logger = setup_logger("auto_exporter")
@@ -12,7 +12,9 @@ logger = setup_logger("auto_exporter")
 import pyJianYingDraft as draft  # noqa: E402
 
 
-def auto_export(draft_name: str, output_path: str, resolution: str = None, framerate: str = None) -> tuple[int, dict]:
+def auto_export(
+    draft_name: str, output_path: str, resolution: str = None, framerate: str = None
+) -> tuple[int, dict]:
     res_map = {
         "480": draft.ExportResolution.RES_480P,
         "720": draft.ExportResolution.RES_720P,
@@ -33,11 +35,13 @@ def auto_export(draft_name: str, output_path: str, resolution: str = None, frame
     target_fr = fr_map.get(str(framerate) if framerate else "")
 
     if resolution and target_res is None:
-        logger.error("Unsupported resolution: %s (allowed: %s)", resolution, ", ".join(res_map.keys()))
-        return 2, {"ok": False, "reason": "invalid_resolution", "resolution": resolution}
+        raise UserInputError(
+            f"Unsupported resolution: {resolution} (allowed: {', '.join(res_map.keys())})"
+        )
     if framerate and target_fr is None:
-        logger.error("Unsupported framerate: %s (allowed: %s)", framerate, ", ".join(fr_map.keys()))
-        return 2, {"ok": False, "reason": "invalid_framerate", "fps": framerate}
+        raise UserInputError(
+            f"Unsupported framerate: {framerate} (allowed: {', '.join(fr_map.keys())})"
+        )
 
     try:
         output_dir = os.path.dirname(os.path.abspath(output_path))
@@ -48,23 +52,26 @@ def auto_export(draft_name: str, output_path: str, resolution: str = None, frame
         ctrl = draft.JianyingController()
         ctrl.export_draft(draft_name, output_path, resolution=target_res, framerate=target_fr)
         logger.info("Export succeeded: %s", output_path)
-        return 0, {
-            "ok": True,
-            "draft": draft_name,
-            "output": output_path,
-            "resolution": resolution,
-            "fps": framerate,
-        }
+        return 0, make_result(
+            True,
+            "ok",
+            "",
+            {
+                "draft": draft_name,
+                "output": output_path,
+                "resolution": resolution,
+                "fps": framerate,
+            },
+        )
     except Exception as e:
         logger.error("Export failed: %s", e)
         logger.error("Hint: restart JianYing and keep it on Home/Edit page before retry.")
-        return 1, {
-            "ok": False,
-            "reason": "export_failed",
-            "error": str(e),
-            "draft": draft_name,
-            "output": output_path,
-        }
+        return 1, make_result(
+            False,
+            "export_failed",
+            str(e),
+            {"draft": draft_name, "output": output_path},
+        )
 
 
 def main() -> int:
@@ -75,9 +82,15 @@ def main() -> int:
     parser.add_argument("--fps", help="Framerate: 24/25/30/50/60")
     parser.add_argument("--json", action="store_true", help="Output JSON summary")
     args = parser.parse_args()
-    code, summary = auto_export(args.name, args.output, args.res, args.fps)
-    if args.json:
-        print(json.dumps(summary, ensure_ascii=False))
+    try:
+        code, summary = auto_export(args.name, args.output, args.res, args.fps)
+    except UserInputError as e:
+        logger.error(str(e))
+        summary = make_result(
+            False, "invalid_input", str(e), {"draft": args.name, "output": args.output}
+        )
+        code = 2
+    emit_result(summary, args.json)
     return code
 
 
