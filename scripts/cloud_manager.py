@@ -38,11 +38,14 @@ class CloudManager:
                         # 兼容不同列名: music_id -> id, title -> name
                         eid = row.get('id') or row.get('music_id') or row.get('effect_id')
                         name = row.get('name') or row.get('title') or row.get('name_hint')
+                        dur = row.get('duration_s') or row.get('duration')
+                        
                         if eid:
                             assets[str(eid)] = {
                                 "id": str(eid),
                                 "name": str(name),
                                 "url": row.get('url', ''),
+                                "duration_s": float(dur) if dur and str(dur).replace('.','',1).isdigit() else None,
                                 "type": row.get('type') or row.get('categories', 'unknown'),
                                 "source_db": db_name
                             }
@@ -63,6 +66,13 @@ class CloudManager:
         for asset in self.assets.values():
             if query.lower() in asset['name'].lower():
                 return asset
+        return None
+
+    def get_asset_duration(self, query: str) -> Optional[float]:
+        """快速获取素材时长"""
+        asset = self.find_asset(query)
+        if asset:
+            return asset.get('duration_s')
         return None
 
     def get_url_from_logs(self, effect_id: str) -> Optional[str]:

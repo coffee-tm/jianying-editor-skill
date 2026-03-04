@@ -2,11 +2,8 @@ import sys
 import os
 import argparse
 
-# 确保能找到 pyJianYingDraft (位于同级或上级的 references 目录)
-script_dir = os.path.dirname(os.path.abspath(__file__))
-references_dir = os.path.join(os.path.dirname(script_dir), "references")
-if references_dir not in sys.path:
-    sys.path.append(references_dir)
+from utils.env_setup import setup_env
+setup_env()
 
 import pyJianYingDraft as draft
 
