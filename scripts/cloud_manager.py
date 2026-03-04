@@ -6,10 +6,9 @@ import re
 import argparse
 from typing import Optional, Dict
 
-# 获取 Skill 根目录
 SKILL_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_FILE = os.path.join(SKILL_ROOT, "data", "cloud_assets_database.csv")
-CACHE_DIR = os.path.join(SKILL_ROOT, "assets", "cloud_cache")
+WORKSPACE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(SKILL_ROOT)))
+CACHE_DIR = os.path.join(WORKSPACE_ROOT, "cloud_cache")
 
 class CloudManager:
     def __init__(self):
@@ -23,7 +22,6 @@ class CloudManager:
         db_files = [
             "cloud_music_library.csv",
             "cloud_video_assets.csv",
-            "cloud_assets_database.csv",
             "cloud_sound_effects.csv"
         ]
         
@@ -45,7 +43,8 @@ class CloudManager:
                                 "id": str(eid),
                                 "name": str(name),
                                 "url": row.get('url', ''),
-                                "type": row.get('type') or row.get('categories', 'unknown')
+                                "type": row.get('type') or row.get('categories', 'unknown'),
+                                "source_db": db_name
                             }
             except Exception as e:
                 print(f"Error loading {db_name}: {e}")

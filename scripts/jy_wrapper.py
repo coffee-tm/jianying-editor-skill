@@ -1110,6 +1110,13 @@ class JyProject:
         # 即使文件是 .mp4，如果库里标记为 music/audio，也要作为音频处理
         is_audio = any(k in db_type for k in ["music", "audio", "sound", "bgm", "音效", "歌曲", "歌"])
         
+        # 增强判断：如果 URL 里包含 audio_mp4，或者 track_name 明确是指向音频轨
+        if not is_audio:
+            if asset_info.get('url') and 'audio' in asset_info.get('url').lower():
+                is_audio = True
+            if track_name and any(k in track_name.lower() for k in ['bgm', 'audio', 'music', 'sound']):
+                is_audio = True
+
         if is_audio:
             return self.add_audio_safe(local_path, start_time, duration, track_name or "AudioTrack")
         else:
