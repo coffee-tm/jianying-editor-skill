@@ -79,8 +79,11 @@ class MediaOpsMixin:
         if not local_path: return None
         
         asset_info = cm.find_asset(query)
-        db_type = str(asset_info.get("type", "")).lower()
-        is_audio = any(k in db_type for k in ["music", "audio", "sound", "bgm", "音效", "歌曲", "歌"])
+        db_type = str(asset_info.get("type", "")).lower() if asset_info else ""
+        source_db = str(asset_info.get("source_db", "")).lower() if asset_info else ""
+        is_audio_db = source_db in {"cloud_music_library.csv", "cloud_sound_effects.csv"}
+        is_audio_type = any(k in db_type for k in ["music", "audio", "sound", "bgm", "音效", "歌曲", "歌"])
+        is_audio = is_audio_db or is_audio_type
         
         if is_audio:
             return self.add_audio_safe(local_path, start_time, duration, track_name or "AudioTrack")

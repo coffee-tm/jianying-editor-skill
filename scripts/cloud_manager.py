@@ -4,7 +4,7 @@ import ipaddress
 import os
 import re
 from typing import Dict, Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import requests
 from utils.config import CONFIG
@@ -167,6 +167,43 @@ class CloudManager:
             return False
         return True
 
+    def _is_audio_asset(self, asset: dict) -> bool:
+        source_db = str(asset.get("source_db", "")).lower()
+        db_type = str(asset.get("type", "")).lower()
+        if source_db in {"cloud_music_library.csv", "cloud_sound_effects.csv"}:
+            return True
+        return any(k in db_type for k in ["music", "audio", "sound", "bgm", "音效", "歌曲", "歌"])
+
+    def _infer_extension(self, asset: dict, url: str, content_type: str = "") -> str:
+        """
+        根据资产属性、URL 参数和响应头推断文件扩展名。
+        """
+        mime_type_hint = ""
+        try:
+            parsed = urlparse(url)
+            mime_type_hint = (parse_qs(parsed.query).get("mime_type", [""])[0] or "").lower()
+        except Exception:
+            mime_type_hint = ""
+
+        content_type = (content_type or "").lower()
+        is_audio = self._is_audio_asset(asset)
+
+        if "audio" in mime_type_hint or content_type.startswith("audio/"):
+            if "mpeg" in mime_type_hint or "mpeg" in content_type:
+                return ".mp3"
+            if "wav" in mime_type_hint or "wav" in content_type:
+                return ".wav"
+            if "ogg" in mime_type_hint or "ogg" in content_type:
+                return ".ogg"
+            return ".m4a"
+
+        if "video" in mime_type_hint or content_type.startswith("video/"):
+            return ".mp4"
+
+        if is_audio:
+            return ".m4a"
+        return ".mp4"
+
     def download_asset(self, query: str, force: bool = False) -> Optional[str]:
         """
         下载云端素材并返回本地路径。
@@ -179,11 +216,6 @@ class CloudManager:
 
         eid = asset["id"]
         safe_name = "".join([c for c in asset["name"] if c.isalnum() or c in (" ", "_")]).strip()
-        local_filename = f"{eid}_{safe_name}.mp4"
-        local_path = os.path.join(CACHE_DIR, local_filename)
-
-        if os.path.exists(local_path) and not force:
-            return local_path
 
         # 需要下载
         # 1. 优先尝试从数据库中获取已有的 URL
@@ -200,6 +232,22 @@ class CloudManager:
             logger.warning("Unsafe download URL blocked for ID %s: %s", eid, url)
             return None
 
+        ext = self._infer_extension(asset, url=url)
+        local_filename = f"{eid}_{safe_name}{ext}"
+        local_path = os.path.join(CACHE_DIR, local_filename)
+        legacy_mp4_path = os.path.join(CACHE_DIR, f"{eid}_{safe_name}.mp4")
+
+        if not force:
+            if os.path.exists(local_path):
+                return local_path
+            # 兼容历史缓存命名：音频资产曾被统一存为 .mp4，优先就地修正文件名
+            if ext != ".mp4" and os.path.exists(legacy_mp4_path):
+                try:
+                    os.replace(legacy_mp4_path, local_path)
+                    return local_path
+                except Exception:
+                    return legacy_mp4_path
+
         logger.info("Downloading Cloud Asset: %s", asset["name"])
         try:
             res = requests.get(url, stream=True, timeout=60)
@@ -207,6 +255,15 @@ class CloudManager:
             if not self._validate_response_headers(res):
                 logger.warning("Download blocked by header validation for ID %s.", eid)
                 return None
+
+            # 响应头可能提供更精确的媒体类型，必要时修正扩展名
+            ext_from_headers = self._infer_extension(
+                asset, url=url, content_type=(res.headers.get("Content-Type") or "")
+            )
+            if ext_from_headers != ext:
+                ext = ext_from_headers
+                local_filename = f"{eid}_{safe_name}{ext}"
+                local_path = os.path.join(CACHE_DIR, local_filename)
 
             tmp_path = local_path + ".part"
             total = 0
