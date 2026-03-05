@@ -71,8 +71,11 @@ class TextOpsMixin:
                 actual_dur_us = audio_seg.target_timerange.duration
                 # 默认设置为屏幕底部 (transform_y=-0.8)
                 clip_settings = draft.ClipSettings(transform_y=-0.8)
-                self.add_text_simple(clean_text, start_time=curr_us, duration=actual_dur_us, 
-                                    track_name=track_name, clip_settings=clip_settings)
+                subtitle_style = draft.TextStyle(size=5.0)
+                subtitle_border = draft.TextBorder(color=(0.0, 0.0, 0.0), alpha=1.0, width=40.0)
+                self.add_text_simple(clean_text, start_time=curr_us, duration=actual_dur_us,
+                                    track_name=track_name, clip_settings=clip_settings,
+                                    style=subtitle_style, border=subtitle_border)
                 curr_us += actual_dur_us + 100000 
         return curr_us
 
