@@ -6,7 +6,6 @@ import ssl
 from typing import Optional, Tuple
 
 import websockets
-
 from utils.config import CONFIG
 
 
@@ -172,7 +171,9 @@ async def generate_voice_with_meta(
             if ok:
                 print(f"[+] SAMI Success: {res}", flush=True)
                 return res, "sami"
-            print(f"[!] SAMI Failed (attempt {i + 1}/{max(1, int(sami_retries))}): {res}", flush=True)
+            print(
+                f"[!] SAMI Failed (attempt {i + 1}/{max(1, int(sami_retries))}): {res}", flush=True
+            )
             if i + 1 < max(1, int(sami_retries)):
                 await asyncio.sleep(0.35)
 
