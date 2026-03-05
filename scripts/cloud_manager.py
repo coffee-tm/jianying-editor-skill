@@ -7,7 +7,6 @@ from typing import Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 import requests
-
 from utils.config import CONFIG
 from utils.logging_utils import setup_logger
 
