@@ -4,7 +4,7 @@ import sys
 def setup_env():
     """
     统一初始化 JianYing Editor Skill 运行环境。
-    将 scripts、references 及跨 Skill 的依赖路径注入到 sys.path 中。
+    将 scripts、vendor 及跨 Skill 的依赖路径注入到 sys.path 中。
     """
     try:
         current_frame = sys._getframe(1)
@@ -40,13 +40,13 @@ def setup_env():
             
     if skill_root:
         scripts_dir = os.path.join(skill_root, "scripts")
-        references_dir = os.path.join(skill_root, "references")
+        vendor_dir = os.path.join(scripts_dir, "vendor")
         
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
             
-        if references_dir not in sys.path:
-            sys.path.insert(0, references_dir)
+        if vendor_dir not in sys.path:
+            sys.path.insert(0, vendor_dir)
             
         possible_api_roots = [
             os.path.join(skill_root, "..", "antigravity-api-skill", "libs"),

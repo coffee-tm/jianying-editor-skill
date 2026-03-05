@@ -130,7 +130,8 @@ Skill 默认认为您的剪映安装在 C 盘默认位置：
 ## 📂 文件夹说明
 
 - `SKILL.md`: 给 AI 看的说明书。
-- `references/`: 剪映代码库的参考文档。
+- `references/`: 参考文档与示例资料（非运行时依赖）。
+- `scripts/vendor/`: 运行时内置依赖（如 `pyJianYingDraft`）。
 - `tools/recording/`: **录屏神器**，都在这里面。
 - `assets/`: 演示用的测试视频和音乐。
 
