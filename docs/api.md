@@ -9,7 +9,8 @@ Bootstrap:
 ```python
 import os
 import sys
-sys.path.insert(0, r"<SKILL_ROOT>\\scripts")
+skill_root = os.getenv("JY_SKILL_ROOT", r"<SKILL_ROOT>")
+sys.path.insert(0, os.path.join(skill_root, "scripts"))
 from jy_wrapper import JyProject
 ```
 

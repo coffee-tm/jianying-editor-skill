@@ -1,5 +1,6 @@
 import os
 import sys
+from utils.skill_path import resolve_skill_root
 
 def setup_env():
     """
@@ -16,27 +17,7 @@ def setup_env():
     except Exception:
         start_dir = os.getcwd()
 
-    skill_root = None
-    
-    possible_roots = [
-        start_dir,
-        os.path.join(start_dir, ".."),
-        os.path.join(start_dir, "..", ".."),
-        os.path.join(start_dir, ".agent", "skills", "jianying-editor"),
-        os.path.join(os.getcwd(), ".agent", "skills", "jianying-editor"),
-        os.path.join(os.getcwd(), "skills", "jianying-editor"),
-    ]
-
-    for p in possible_roots:
-        p = os.path.abspath(p)
-        if os.path.exists(os.path.join(p, "scripts", "jy_wrapper.py")):
-            skill_root = p
-            break
-            
-    if not skill_root:
-        fallback_root = os.path.join(os.getcwd(), ".agent", "skills", "jianying-editor")
-        if os.path.exists(fallback_root):
-            skill_root = fallback_root
+    skill_root, _ = resolve_skill_root(start_dir)
             
     if skill_root:
         scripts_dir = os.path.join(skill_root, "scripts")

@@ -67,3 +67,23 @@ python <SKILL_ROOT>/scripts/auto_exporter.py "ProjectName" "custom_output.mp4" -
 - **Draft Recognition**: The wrapper automatically handles `DraftFolder` structure. Do not manually manipulate `draft_content.json` unless you know exactly what you are doing.
 - **Exporting Requirements**: Auto-exporting only works on **Windows** with **Jianying v5.9 or lower**. It relies on `uiautomation` to interact with the UI.
 - **UI Refresh**: After the script runs, if Jianying is open, the user may need to exit and re-enter the draft to see changes.
+
+## Quick Edit Execution Template (Standard)
+
+For generic requests like "来个剪辑", execute in this order:
+
+1. Minimal environment checks (python + drafts root)
+2. Resolve required assets (local first, cloud second)
+3. Generate one deterministic edit script
+4. Run script once and collect output
+5. Perform acceptance checks and report concrete results
+
+## Acceptance Checks (Standard)
+
+After execution, verify:
+
+- Draft directory exists
+- Save completed (`project.save()` success)
+- At least one segment exists on a video track
+- BGM (if used) is on audio track
+- Narration/subtitle pairing exists when TTS was requested

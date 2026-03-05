@@ -2,6 +2,31 @@
 
 Task routing matrix for reliable execution.
 
+## 0) Quick Edit Runtime Template (Default for "来个剪辑")
+
+Use this fixed sequence:
+
+1. Environment check (minimal):
+   - verify Python works
+   - verify draft root exists
+2. Asset resolution:
+   - use explicit local/cloud assets
+   - only call `asset_search.py` when user asks for style/effect lookup
+3. Script assembly:
+   - generate one runnable script with deterministic APIs
+4. Execute once:
+   - run script and capture success/failure output
+5. Acceptance check:
+   - validate draft and track structure (see checklist below)
+
+### Acceptance Checklist (Mandatory)
+
+- Draft folder exists under JianYing drafts root
+- `project.save()` completed successfully
+- At least one `video` track segment exists
+- If BGM exists, it must be on `audio` track (not `video`)
+- If narration exists, subtitle segments should exist and be time-aligned
+
 ## 1) Cloud Video + BGM Draft
 
 - Read: `rules/setup.md`, `rules/media.md`, `rules/audio-voice.md`
